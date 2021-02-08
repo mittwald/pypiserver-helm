@@ -1,0 +1,22 @@
+name: Release Chart
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  Publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Install requirements
+        run: sudo bash $(pwd)/scripts/requirements.sh
+
+      - name: Publish chart
+        env:
+          PUSH: "true"
+          GITHUB_TOKEN: "${{ secrets.RELEASE_USER_TOKEN }}"
+        run: bash $(pwd)/scripts/bump-app-version.sh publish
