@@ -3,7 +3,7 @@ name: Test pypiserver chart
 on:
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   Test:
