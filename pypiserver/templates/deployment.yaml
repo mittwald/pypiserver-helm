@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chart.fullname" . }}
+  labels: {{- include "chart.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels: {{- include "chart.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "chart.serviceAccountName" . }}
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext: {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - -p 8080
+          {{- if .Values.auth.enabled }}
+            - -P /conf.d/htpasswd/.htpasswd
+            - -a {{ include "helm-toolkit.utils.joinListWithComma" .Values.auth.actions | default "." }}
+          {{- end  }}
+          {{- range .Values.extraArgs }}
+            - {{ . }}
+          {{- end }}
+            - /data
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          volumeMounts:
+            - mountPath: /data
+              name: data
+              mountPropagation: {{ .Values.persistence.mountPropagation }}
+            {{- if .Values.auth.enabled }}
+            - mountPath: /conf.d/htpasswd
+              name: htpasswd
+              readOnly: true
+            {{- end }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        {{- if .Values.auth.enabled }}
+        - name: htpasswd
+          secret:
+            secretName: {{ include "chart.fullname" . }}-htpasswd
+        {{- end }}
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (print (include "chart.fullname" .) "-data") }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
