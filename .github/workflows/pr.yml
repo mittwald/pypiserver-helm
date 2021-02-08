@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  Test:
+  Template:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,7 +19,7 @@ jobs:
         run: helm template pypiserver/ --debug
 
       - name: Template chart with example values
-        run: for i in example/*.yaml ; do helm template -f "$i" pypiserver/ --debug ; done
+        run: set -xe && for i in example/*.yaml ; do helm template -f "$i" pypiserver/ --debug ; done
 
       - name: Lint chart
         run: helm lint pypiserver/
